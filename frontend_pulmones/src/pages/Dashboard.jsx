@@ -10,21 +10,18 @@ export default function Dashboard() {
   const [analysisResults, setAnalysisResults] = useState(null);
 
   const handleUploadSuccess = (responseData) => {
-    // 1. Cambiamos el estado para desmontar el UploadZone y mostrar el Loader
-    setAppState("processing"); 
+    setAppState("processing");
     const taskId = responseData.task_id;
 
-    // 2. Consultamos al backend cada 2 segundos
     const intervalId = setInterval(async () => {
       try {
         const statusData = await checkTaskStatus(taskId);
-        
         if (statusData.status === 'completed') {
-          clearInterval(intervalId); // Detenemos las peticiones
+          clearInterval(intervalId);
           setAnalysisResults(statusData.results);
-          setAppState("results"); // Mostramos los visores 3D y 2D
-        } else if (statusData.status === 'not_found') {
-          console.error("Tarea no encontrada en el servidor.");
+          setAppState("results");
+        } else if (statusData.status === 'not_found' || statusData.status === 'error') {
+          console.error("Error en la tarea:", statusData.message);
           clearInterval(intervalId);
         }
       } catch (error) {
@@ -47,7 +44,6 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto p-8">
-        
         {appState === "upload" && (
           <UploadZone onUploadSuccess={handleUploadSuccess} />
         )}
@@ -70,7 +66,7 @@ export default function Dashboard() {
                   Confianza IA: {analysisResults.confidence}%
                 </span>
                 <button 
-                  onClick={handleReset} 
+                  onClick={handleReset}
                   className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium transition-colors"
                 >
                   Analizar otro
@@ -78,18 +74,40 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Tarjeta de métricas y estadísticas clínicas */}
+            {analysisResults.stats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-5 rounded-lg shadow-sm border border-gray-100 text-center">
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Diámetro Estimado</p>
+                  <p className="text-xl font-bold text-slate-800 mt-1">{analysisResults.stats.diametroAprox}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Área Máxima</p>
+                  <p className="text-xl font-bold text-slate-800 mt-1">{analysisResults.stats.areaAfectadaMax}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Volumen Afectado</p>
+                  <p className="text-xl font-bold text-slate-800 mt-1">{analysisResults.stats.volumenEstimado}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Cortes con Hallazgos</p>
+                  <p className="text-xl font-bold text-slate-800 mt-1">{analysisResults.stats.slicesAfectados}</p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col min-h-[500px]">
                 <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2">Visor 3D</h3>
                 <div className="flex-1 bg-gray-900 rounded-md overflow-hidden relative">
-                   <MeshViewer modelUrl={analysisResults.model3dUrl} />
+                  <MeshViewer modelUrl={analysisResults.model3dUrl} />
                 </div>
               </div>
 
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col min-h-[500px]">
                 <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2">Cortes 2D (Marcados)</h3>
                 <div className="flex-1 bg-gray-900 rounded-md overflow-hidden">
-                   <SliceViewer slices={analysisResults.slices2dUrls} />
+                  <SliceViewer slices={analysisResults.slices2dUrls} />
                 </div>
               </div>
             </div>
